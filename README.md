@@ -10,7 +10,7 @@ Algunas reglas son:
 
 - Para la declaracion de condicionales debe tener la estructura de:
 
-"if (condicion) then (valor de retorno en caso de cumplirse la condicion) else (valor de retorno en caso de no cumplirse la condicion)".
+"if (condicion) (valor de retorno en caso de cumplirse la condicion) else (valor de retorno en caso de no cumplirse la condicion)".
 
 - Para la declaracion de variables debe tener la estructura de:
 
@@ -20,9 +20,12 @@ Algunas reglas son:
 
 "function (nombre y parametros de la funcion) => (cuerpo de la funcion)".
 
-PD: los parametros de la funcion deben encontrarse entre parentesis, tanto en su implementacion como en su llamado.
+PD: 
+- Los parametros de la funcion deben encontrarse entre parentesis, tanto en su implementacion como en su llamado.
+- Las expresiones usadas en la declaracion de condicionales deben estar entre parentesis.
+- La expresion donde serian usadas las variables declaradas debe aparecer entre parentesis.
 
- En caso de incumplir alguna de estas reglas o tener algun error en su codigo, este sera detectado, sea ese errorlexico, sintactico o semantico.
+En caso de incumplir alguna de estas reglas o tener algun error en su codigo, este sera detectado, sea ese errorlexico, sintactico o semantico.
 
 Creo que eso es todo, gracias por su atención y que lo disfrute
 
