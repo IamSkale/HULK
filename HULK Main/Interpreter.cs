@@ -2,19 +2,19 @@
 {
     public abstract class NodeVisitor
     {
-        protected object Visit(AST node, List<string> semanticErrors)
+        protected object Visit(AST node)
         {
             if (node is TernaryExpression)
             {
-                return VisitTernaryExpression((TernaryExpression)node, semanticErrors);
+                return VisitTernaryExpression((TernaryExpression)node);
             }
             if (node is BinaryExpression)
             {
-                return VisitBinaryExpression((BinaryExpression)node, semanticErrors);
+                return VisitBinaryExpression((BinaryExpression)node);
             }
             if (node is UnaryExpression)
             {
-                return (VisitUnaryExpression((UnaryExpression)node, semanticErrors));
+                return (VisitUnaryExpression((UnaryExpression)node));
             }
             if (node is Number)
             {
@@ -28,31 +28,49 @@
             {
                 return VisitBoolean((Boolean)node);
             }
+            if (node is Var)
+            {
+                return VisitVar((Var)node);
+            }
+            if (node is FunctionCall)
+            {
+                return VisitFunctionCall((FunctionCall)node);
+            }
+            if (node is Declaration)
+            {
+                return VisitDeclaration((Declaration)node);
+            }
             return "null";
         }
         public abstract object VisitNum(Number node);
         public abstract object VisitCharchain(CharChain node);
         public abstract object VisitBoolean(Boolean node);
-        public abstract object VisitUnaryExpression(UnaryExpression node, List<string> semanticErrors);
-        public abstract object VisitBinaryExpression(BinaryExpression node, List<string> semanticErrors);
-        public abstract object VisitTernaryExpression(TernaryExpression node, List<string> semanticErrors);
+        public abstract object VisitVar(Var node);
+        public abstract object VisitFunctionCall(FunctionCall node);
+        public abstract object VisitDeclaration(Declaration node);
+        public abstract object VisitUnaryExpression(UnaryExpression node);
+        public abstract object VisitBinaryExpression(BinaryExpression node);
+        public abstract object VisitTernaryExpression(TernaryExpression node);
     }
 
     public class Evaluator : NodeVisitor
     {
-        public Parser parser;
+        public static Dictionary<object, object> varsDictionary;
         public AST tree;
-        public List<string> semanticErrors;
-         
-        public Evaluator(AST tree)
+        public List<Error> errors;
+        public Dictionary<string, Function> functionDeclarations;
+
+        public Evaluator(AST tree, Dictionary<string, Function> functionDeclarations, List<Error> errors)
         {
-            semanticErrors = new List<string>();
+            this.errors = errors;
             this.tree = tree;
+            this.functionDeclarations = functionDeclarations;
+            varsDictionary = new Dictionary<object, object>();
         }
 
-        public object Interpreter(List<string> semanticErrors)
+        public object Interpreter()
         {
-            return Visit(tree, semanticErrors);
+            return Visit(tree);
         }
         public override object VisitNum(Number node)
         {
@@ -66,11 +84,70 @@
         {
             return node.Value;
         }
-        public override object VisitUnaryExpression(UnaryExpression node, List<string> semanticErrors)
+        public override object VisitVar(Var node)
+        {
+            if (varsDictionary.ContainsKey(node.varName.ToString()) && varsDictionary[node.varName.ToString()] != null)
+            {
+                return varsDictionary[node.varName.ToString()];
+            }
+            else
+            {
+                errors.Add(new Error(node.varName.ToString(),"not implemented"));
+                return null;
+            }
+        }
+        public override object VisitFunctionCall(FunctionCall node)
+        {
+            var auxVarsDictionary = varsDictionary;
+            var auxVarsDictionaryII = new Dictionary<object, object>();
+            if (functionDeclarations.ContainsKey(node.functionName))
+            {
+                if (node.parameters.Count != functionDeclarations[node.functionName].functionParameters.Count)
+                {
+                    errors.Add(new Error(node.functionName.ToString(), "parameters count"));
+                    return null;
+                }
+                else
+                {
+                    for (int i = 0; i < node.parameters.Count; i++)
+                    {
+                        auxVarsDictionaryII.Add(functionDeclarations[node.functionName].functionParameters[i], Visit(node.parameters[i]));
+                    }
+                    varsDictionary = auxVarsDictionaryII;
+                    object result = Visit(functionDeclarations[node.functionName].functionBody);
+                    varsDictionary = auxVarsDictionary;
+                    return result;
+                }
+            }
+            else
+            {
+                errors.Add(new Error(node.functionName.ToString(), "not implemented"));
+                return null;
+            }
+        }
+        public override object VisitDeclaration(Declaration node)
+        {
+            var auxVarsDictionary = varsDictionary;
+            foreach (var item in node.varsDictionary)
+            {
+                if (varsDictionary.ContainsKey(item.Key))
+                {
+                    varsDictionary[item.Key] = Visit(item.Value);
+                }
+                else
+                {
+                    varsDictionary.Add(item.Key, Visit(item.Value));
+                }
+            }
+            object result = Visit(node.declarationBody);
+            varsDictionary = auxVarsDictionary;
+            return result;
+        }
+        public override object VisitUnaryExpression(UnaryExpression node)
         {
             object result = 0;
 
-            object thisNode = Visit(node.node, semanticErrors);
+            object thisNode = Visit(node.node);
 
             if (node.symbol == "!")
             {
@@ -80,7 +157,7 @@
                 }
                 else
                 {
-                    semanticErrors.Add(node.symbol + Convert.ToString(thisNode));
+                    errors.Add(new Error(node.symbol + Convert.ToString(thisNode), "invalid expression"));
                 }
             }
             else if (node.symbol == "sin" || node.symbol == "cos" || node.symbol == "log" || node.symbol == "sqrt")
@@ -107,24 +184,24 @@
                     }
                     catch (System.Exception)
                     {
-                        semanticErrors.Add(node.symbol + " " + Convert.ToString(thisNode));
+                        errors.Add(new Error(node.symbol + " " + Convert.ToString(thisNode), "invalid expression"));
                     }
                 }
             }
-            else if (node.symbol == "print" || node.symbol == "in")
+            else if (node.symbol == "print")
             {
                 result = thisNode;
             }
 
             return result;
         }
-        public override object VisitBinaryExpression(BinaryExpression node, List<string> semanticErrors)
+        public override object VisitBinaryExpression(BinaryExpression node)
         {
             object result = 0;
 
-            object leftNode = Visit(node.leftNode, semanticErrors);
+            object leftNode = Visit(node.leftNode);
 
-            object rightNode = Visit(node.rightNode, semanticErrors);
+            object rightNode = Visit(node.rightNode);
 
             if (leftNode != "null" && rightNode != "null")
             {
@@ -170,12 +247,12 @@
                         }
                         catch (Exception ex)
                         {
-                            semanticErrors.Add(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode));
+                            errors.Add(new Error(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode), "invalid expression"));
                         }
                     }
                     else
                     {
-                        semanticErrors.Add(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode));
+                        errors.Add(new Error(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode), "invalid expression"));
                     }
                 }
                 else if (node.symbol == "==" || node.symbol == "!=" || node.symbol == "@")
@@ -208,7 +285,7 @@
                     }
                     else
                     {
-                        semanticErrors.Add(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode));
+                        errors.Add(new Error(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode), "invalid expression"));
                     }
                 }
             }
@@ -222,7 +299,7 @@
                     }
                     catch (Exception ex)
                     {
-                        semanticErrors.Add(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode));
+                        errors.Add(new Error(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode), "invalid expression"));
                     }
                 }
             }
@@ -230,41 +307,35 @@
             {
                 if (rightNode == "null")
                 {
-                    semanticErrors.Add(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol));
+                    errors.Add(new Error(Convert.ToString(leftNode) + " " + Convert.ToString(node.symbol), "invalid expression"));
                 }
                 else if (leftNode == "null")
                 {
-                    semanticErrors.Add(Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode));
+                    errors.Add(new Error(Convert.ToString(node.symbol) + " " + Convert.ToString(rightNode), "invalid expression"));
                 }
             }
             return result;
         }
-        public override object VisitTernaryExpression(TernaryExpression node, List<string> semanticErrors)
+        public override object VisitTernaryExpression(TernaryExpression node)
         {
-            object leftNode = Visit(node.leftNode, semanticErrors);
-
-            object midNode = Visit(node.midNode, semanticErrors);
-
-            object rightNode = Visit(node.rightNode, semanticErrors);
-
-            object result = 0;
+            object leftNode = Visit(node.leftNode);
 
             if (leftNode.ToString() == "true" || leftNode.ToString() == "false" || leftNode is bool || leftNode is Boolean)
             {
                 if (Convert.ToBoolean(leftNode) == true)
                 {
-                    result = midNode;
+                    return Visit(node.midNode);
                 }
                 else
                 {
-                    result = rightNode;
+                    return Visit(node.rightNode);
                 }
             }
             else
             {
-                semanticErrors.Add("if " + Convert.ToString(leftNode));
+                errors.Add(new Error("if " + Convert.ToString(leftNode), "invalid expression"));
+                return null;
             }
-            return result;
         }
     }
 }

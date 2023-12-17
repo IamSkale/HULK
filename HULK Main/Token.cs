@@ -20,6 +20,7 @@
         #region Identifier
         VAR,
         FUNCTION,
+        INNERFUNCTION,
         #endregion
 
         #region Puntuator
@@ -32,11 +33,11 @@
         #region KeyWord
         IF,
         ELSE,
-        THEN,
         TRUE,
         FALSE,
         LET,
         IN,
+        PI,
         #endregion
 
         #region Operator

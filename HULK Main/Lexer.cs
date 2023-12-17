@@ -4,39 +4,125 @@
     {
         public List<Token> tokens;
 
-        List<string> vars = new List<string>();
+        public List<string> vars = new List<string>();
 
-        public List<string> lexicalErrors;
+        public List<Error> errors;
 
-        public Lexer(string input)
+        public Dictionary<string, Function> functionDeclarations;
+
+        public Lexer(Dictionary<string, Function> functionDeclarations, List<Error> errors)
         {
             tokens = new List<Token>();
 
-            lexicalErrors = new List<string>();
+            this.errors = errors;
 
             vars = new List<string>();
 
-            FillTokensList(input, tokens, lexicalErrors, vars);
+            this.functionDeclarations = functionDeclarations;
         }
-
-        public static void FillTokensList(string input, List<Token> tokens, List<string> lexicalErrors, List<string> vars)
+        public void FunctionDeclaration(List<Token> tokens)
         {
-            int parenthesisCount = 0;
+            object functionName = "";
 
-            int ifCount = 0;
+            List<string> functionParameters = new List<string>();
 
-            int thenCount = 0;
+            List<Token> functionBody = new List<Token>();
 
-            int elseCount = 0;
-
-            int letCount = 0;
-
-            int inCount = 0;
+            int auxIndex = 0;
 
             int commaCount = 0;
 
-            int equalCount = 0;
+            bool commaExceed = false;
 
+            if (tokens[1].TokenType == TokenType.FUNCTION)
+            {
+                functionName = tokens[1].TokenValue;
+
+                if (tokens[2].TokenType == TokenType.O_PARENTHESES)
+                {
+                    for (int i = 3; i < tokens.Count; i++)
+                    {
+                        if (tokens[i].TokenType == TokenType.FUNCTION || tokens[i].TokenType == TokenType.VAR)
+                        {
+                            functionParameters.Add(tokens[i].TokenValue.ToString());
+                        }
+                        else if (tokens[i].TokenType == TokenType.C_PARENTHESES)
+                        {
+                            auxIndex = i + 1;
+                            break;
+                        }
+                        else if (tokens[i].TokenType == TokenType.COMMA)
+                        {
+                            commaCount++;
+                            if (commaCount > functionParameters.Count)
+                            {
+                                errors.Add(new Error(",", "unexpected token"));
+                                commaExceed = true;
+                            }
+                        }
+                        else if (i == tokens.Count - 1 || tokens[i].TokenType == TokenType.SEMICOLON)
+                        {
+                            errors.Add(new Error(")", "expected token"));
+                            auxIndex = i;
+                        }
+                    }
+                    if (auxIndex == tokens.Count - 1)
+                    {
+                        return;
+                    }
+
+                    if (!commaExceed && commaCount == functionParameters.Count)
+                    {
+                        errors.Add(new Error(",", "unexpected token"));
+                    }
+                    else if (!commaExceed)
+                    {
+                        if (tokens[auxIndex].TokenType == TokenType.DECLARATION)
+                        {
+                            for (int i = auxIndex + 1; i < tokens.Count; i++)
+                            {
+                                if (tokens[i].TokenType == TokenType.SEMICOLON || i == tokens.Count - 1)
+                                {
+                                    break;
+                                }
+
+                                functionBody.Add(tokens[i]);
+                            }
+                            if (functionBody.Count != 0)
+                            {
+                                ParserII parserII = new ParserII(functionBody, errors);
+                                if (functionDeclarations.ContainsKey(functionName.ToString()))
+                                {
+                                    functionDeclarations[functionName.ToString()] = new Function(functionParameters, parserII.AndOrOr(new Dictionary<object, AST>()));
+                                }
+                                else
+                                {
+                                    functionDeclarations.Add(functionName.ToString(), new Function(functionParameters, parserII.AndOrOr(new Dictionary<object, AST>())));
+                                }
+                            }
+                            else
+                            {
+                                errors.Add(new Error("function declaration", "body expected"));
+                            }
+                        }
+                        else
+                        {
+                            errors.Add(new Error("function declaration", "declaration symbol expected"));
+                        }
+                    }
+                }
+                else
+                {
+                    errors.Add(new Error("(", "expected token"));
+                }
+            }
+            else
+            {
+                errors.Add(new Error("function declaration", "name expected"));
+            }
+        }
+        public void FillTokensList(string input)
+        {
             if (input != "")
             {
                 string tempWord = "";
@@ -48,7 +134,11 @@
                     {
                         if (tempWord != "")
                         {
-                            Tokenize(tempWord, tokens, lexicalErrors, vars);
+                            if (tempWord == ";" && i != input.Length - 1)
+                            {
+                                errors.Add(new Error(";", "unexpected token"));
+                            }
+                            Tokenize(tempWord, tokens, vars);
 
                             tempWord = "";
                         }
@@ -62,7 +152,7 @@
 
                             if (auxCurrentChar == '\"' || j == input.Length - 1)
                             {
-                                Tokenize(tempWord, tokens, lexicalErrors, vars);
+                                Tokenize(tempWord, tokens, vars);
 
                                 tempWord = "";
 
@@ -76,7 +166,11 @@
                     {
                         if (tempWord != "")
                         {
-                            Tokenize(tempWord, tokens, lexicalErrors, vars);
+                            if (tempWord == ";" && i != input.Length - 1)
+                            {
+                                errors.Add(new Error(";", "unexpected token"));
+                            }
+                            Tokenize(tempWord, tokens, vars);
 
                             tempWord = "";
                         }
@@ -87,7 +181,7 @@
 
                             tempWord += input[i + 1];
 
-                            Tokenize(tempWord, tokens, lexicalErrors, vars);
+                            Tokenize(tempWord, tokens, vars);
 
                             tempWord = "";
 
@@ -95,14 +189,9 @@
                         }
                         else
                         {
-                            if (currentChar == '=')
-                            {
-                                equalCount++;
-                            }
-
                             tempWord += currentChar;
 
-                            Tokenize(tempWord, tokens, lexicalErrors, vars);
+                            Tokenize(tempWord, tokens, vars);
 
                             tempWord = "";
                         }
@@ -111,7 +200,11 @@
                     {
                         if (tempWord != "")
                         {
-                            Tokenize(tempWord, tokens, lexicalErrors, vars);
+                            if (tempWord == ";" && i != input.Length - 1)
+                            {
+                                errors.Add(new Error(";", "unexpected token"));
+                            }
+                            Tokenize(tempWord, tokens, vars);
 
                             tempWord = "";
                         }
@@ -123,7 +216,7 @@
                             {
                                 tempWord += auxCurrentChar;
 
-                                Tokenize(tempWord, tokens, lexicalErrors, vars);
+                                Tokenize(tempWord, tokens, vars);
 
                                 tempWord = "";
 
@@ -131,40 +224,11 @@
                             }
                             else if (!Char.IsLetterOrDigit(auxCurrentChar))
                             {
-                                if (tempWord == "let" || tempWord == "in" || tempWord == "if" || tempWord == "then" || tempWord == "else")
+                                if (tempWord == ";" && i != input.Length - 1)
                                 {
-                                    switch (tempWord)
-                                    {
-                                        case "let":
-                                            letCount++;
-                                            break;
-                                        case "in":
-                                            inCount++;
-                                            if (inCount > letCount)
-                                            {
-                                                lexicalErrors.Add("in");
-                                            }
-                                            break;
-                                        case "if":
-                                            ifCount++;
-                                            break;
-                                        case "then":
-                                            thenCount++;
-                                            if (thenCount > ifCount)
-                                            {
-                                                lexicalErrors.Add("then");
-                                            }
-                                            break;
-                                        case "else":
-                                            elseCount++;
-                                            if (elseCount > ifCount)
-                                            {
-                                                lexicalErrors.Add("else");
-                                            }
-                                            break;
-                                    }
+                                    errors.Add(new Error(";", "unexpected token"));
                                 }
-                                Tokenize(tempWord, tokens, lexicalErrors, vars);
+                                Tokenize(tempWord, tokens, vars);
 
                                 tempWord = "";
 
@@ -182,76 +246,26 @@
                     {
                         if (tempWord != "")
                         {
-                            Tokenize(tempWord, tokens, lexicalErrors, vars);
+                            Tokenize(tempWord, tokens, vars);
 
                             tempWord = "";
                         }
 
                         tempWord += currentChar;
 
-                        Tokenize(tempWord, tokens, lexicalErrors, vars);
+                        Tokenize(tempWord, tokens, vars);
 
                         tempWord = "";
-
-                        if (currentChar == '(')
-                        {
-                            parenthesisCount++;
-                        }
-                        else if (currentChar == ')')
-                        {
-                            parenthesisCount -= 1;
-
-                            if (parenthesisCount < 0)
-                            {
-                                lexicalErrors.Add(")");
-                            }
-                        }
-                        else if (currentChar == ',')
-                        {
-                            commaCount++;
-                        }
-                    }
-                }
-                if (parenthesisCount > 0)
-                {
-                    for (int i = 0; i < parenthesisCount; i++)
-                    {
-                        lexicalErrors.Add("(");
-                    }
-                }
-                if (ifCount > thenCount)
-                {
-                    for (int i = 0; i < ifCount - thenCount; i++)
-                    {
-                        lexicalErrors.Add("if");
-                    }
-                }
-                if (letCount > inCount)
-                {
-                    for (int i = 0; i < letCount - inCount; i++)
-                    {
-                        lexicalErrors.Add("let");
-                    }
-                }
-                if (equalCount == commaCount && commaCount != 0)
-                {
-                    lexicalErrors.Add(",");
-                }
-                if (commaCount > equalCount && equalCount > 0)
-                {
-                    for (int i = 0; i < commaCount - equalCount; i++)
-                    {
-                        lexicalErrors.Add(",");
                     }
                 }
             }
 
             if (tokens[tokens.Count - 1].TokenType != TokenType.SEMICOLON)
             {
-                lexicalErrors.Add(";");
+                errors.Add(new Error(";", "expected token"));
             }
         }
-        public static void Tokenize(string token, List<Token> tokens, List<string> lexicalErrors, List<string> vars)
+        private void Tokenize(string token, List<Token> tokens, List<string> vars)
         {
             if (token[0] == '\"')
             {
@@ -261,18 +275,20 @@
                 }
                 else
                 {
-                    lexicalErrors.Add(token);
+                    errors.Add(new Error(token, "invalid token"));
                 }
             }
             else if (Char.IsDigit(token[0]))
             {
                 bool isInvalid = false;
-                for (int i = 0; i < token.Length; i++)
+                for (int i = 1; i < token.Length; i++)
                 {
                     if (!Char.IsDigit(token[i]) && token[i] != '.')
                     {
                         isInvalid = true;
-                        lexicalErrors.Add(token);
+
+                        errors.Add(new Error(token, "invalid token"));
+
                         break;
                     }
                 }
@@ -281,10 +297,13 @@
                     tokens.Add(new Token(token, TokenType.NUMBER));
                 }
             }
-            else if (token == "let" || token == "in" || token == "if" || token == "then" || token == "else" || token == "true" || token == "false" || token == "+" || token == "-" || token == "/" || token == "*" || token == "^" || token == "%" || token == "@" || token == "=" || token == "<" || token == ">" || token == "&" || token == "|" || token == "!" || token == "<=" || token == ">=" || token == "==" || token == "!=" || token == "(" || token == ")" || token == "," || token == ";" || token == "=>")
+            else if (token == "PI" || token == "let" || token == "in" || token == "if" || token == "else" || token == "true" || token == "false" || token == "+" || token == "-" || token == "/" || token == "*" || token == "^" || token == "%" || token == "@" || token == "=" || token == "<" || token == ">" || token == "&" || token == "|" || token == "!" || token == "<=" || token == ">=" || token == "==" || token == "!=" || token == "(" || token == ")" || token == "," || token == ";" || token == "=>")
             {
                 switch (token.ToLower())
                 {
+                    case "pi":
+                        tokens.Add(new Token(token, TokenType.PI));
+                        break;
                     case "let":
                         tokens.Add(new Token(token, TokenType.LET));
                         break;
@@ -293,9 +312,6 @@
                         break;
                     case "if":
                         tokens.Add(new Token(token, TokenType.IF));
-                        break;
-                    case "then":
-                        tokens.Add(new Token(token, TokenType.THEN));
                         break;
                     case "else":
                         tokens.Add(new Token(token, TokenType.ELSE));
@@ -378,11 +394,11 @@
             {
                 if (token == "print" || token == "sin" || token == "cos" || token == "log" || token == "sqrt")
                 {
-                    tokens.Add(new Token(token, TokenType.FUNCTION));
+                    tokens.Add(new Token(token, TokenType.INNERFUNCTION));
                 }
                 else
                 {
-                    if (tokens.Count != 0 && (tokens[tokens.Count - 1].TokenType == TokenType.LET || tokens[tokens.Count - 1].TokenType == TokenType.COMMA))
+                    if ((tokens.Count != 0 && !functionDeclarations.ContainsKey(token) && (tokens[tokens.Count - 1].TokenType == TokenType.LET || tokens[tokens.Count - 1].TokenType == TokenType.COMMA || tokens[tokens.Count - 1].TokenType == TokenType.O_PARENTHESES)))
                     {
                         tokens.Add(new Token(token, TokenType.VAR));
                         vars.Add(token);
@@ -402,7 +418,7 @@
             }
             else
             {
-                lexicalErrors.Add(token);
+                errors.Add(new Error(token, "invalid token"));
             }
         }
     }
