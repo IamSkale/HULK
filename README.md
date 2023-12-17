@@ -2,8 +2,6 @@ Buenas, aqui les habla el estudiante Diego Hernandez Rodriguez del C112
 
 Bienvenido a HULK, mi segundo proyecto de programación:
 
- El proyecto no se encuentra en su estado mas optimo, pero funciona, para todo caso probado, de forma satifactoria.
-
  Usted puede introducir las lineas de codigo que desee, siempre y cuando cumpla con las reglas del lenguaje.
   
 Algunas reglas son:
@@ -22,10 +20,9 @@ Algunas reglas son:
 
 PD: 
 - Los parametros de la funcion deben encontrarse entre parentesis, tanto en su implementacion como en su llamado.
-- Las expresiones usadas en la declaracion de condicionales deben estar entre parentesis.
-- La expresion donde serian usadas las variables declaradas debe aparecer entre parentesis.
+- Las expresion usada como condicion en la declaracion de una condicional debe aparecer entre parentesis.
 
-En caso de incumplir alguna de estas reglas o tener algun error en su codigo, este sera detectado, sea ese errorlexico, sintactico o semantico.
+En caso de incumplir alguna de estas reglas o tener algun error en su codigo, este sera detectado, sea ese error lexico, sintactico o semantico.
 
 Creo que eso es todo, gracias por su atención y que lo disfrute
 
