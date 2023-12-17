@@ -90,14 +90,14 @@
                             }
                             if (functionBody.Count != 0)
                             {
-                                ParserII parserII = new ParserII(functionBody, errors);
+                                Parser parser = new Parser(functionBody, errors);
                                 if (functionDeclarations.ContainsKey(functionName.ToString()))
                                 {
-                                    functionDeclarations[functionName.ToString()] = new Function(functionParameters, parserII.AndOrOr(new Dictionary<object, AST>()));
+                                    functionDeclarations[functionName.ToString()] = new Function(functionParameters, parser.AndOrOr(new Dictionary<object, AST>()));
                                 }
                                 else
                                 {
-                                    functionDeclarations.Add(functionName.ToString(), new Function(functionParameters, parserII.AndOrOr(new Dictionary<object, AST>())));
+                                    functionDeclarations.Add(functionName.ToString(), new Function(functionParameters, parser.AndOrOr(new Dictionary<object, AST>())));
                                 }
                             }
                             else

@@ -28,7 +28,7 @@
 
                         if (errors.Count() == 0)
                         {
-                            ParserII parser = new ParserII(lexer.tokens, errors);
+                            Parser parser = new Parser(lexer.tokens, errors);
                             if ((lexer.tokens[0].TokenValue).ToString() == "function")
                             {
                                 lexer.FunctionDeclaration(lexer.tokens);
