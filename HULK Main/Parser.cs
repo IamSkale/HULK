@@ -1,6 +1,6 @@
 ﻿namespace HULK
 {
-    public class ParserII
+    public class Parser
     {
         public List<Token> tokens;
 
@@ -10,7 +10,7 @@
 
         public List<Error> errors;
 
-        public ParserII(List<Token> tokens, List<Error> errors)
+        public Parser(List<Token> tokens, List<Error> errors)
         {
             this.tokens = tokens;
 
